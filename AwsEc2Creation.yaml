@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: V1.0.0 - boots up, creates the EC2, adds a PublicSubnet, PrivateSubnet, DefaultPublicRoute. Also it successfully can be connected to via SSH.
+Description: V1.0.1 - Added private route 
 
 Parameters:
   KeyName:
@@ -97,7 +97,7 @@ Resources:
         - Key: Env
           Value: !Ref EnvironmentName
 
-  PrivateSubnet1:
+  PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -127,3 +127,32 @@ Resources:
           Value: !Sub ${EnvironmentName} Public Routes
         - Key: Env
           Value: !Ref EnvironmentName
+ 
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+        - Key: Env
+          Value: !Ref EnvironmentName
+
+  DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
